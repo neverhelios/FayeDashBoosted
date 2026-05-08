@@ -19,7 +19,7 @@ namespace FayeDashBoosted
         }
     }
 
-    [HarmonyPatch(typeof(Field.FieldAbilities), "ApplyMadDash")]
+    [HarmonyPatch(typeof(Field.FieldAbilities), "Activate")]
     class FayeDashPatch
     {
         private static int MadDashSoundIndex = 0;
@@ -75,6 +75,43 @@ namespace FayeDashBoosted
         {
             __state.Stop();
             Melon<Core>.Logger.Msg(__state.Elapsed.ToString());
+        }
+    }
+
+    [HarmonyPatch(typeof(Field.FieldAbilities))]
+    [HarmonyPatch("Activate")]
+    public static class FieldAbilities_Activate_Patch
+    {
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            var SoundEventStartIndex = -1;
+            var SoundEventEndIndex = -1;
+
+            // Remove the `CommonObjects.GetFMODSoundEvents().PlayEvent(this.madDashFMOD);` call
+            // which is after the second `madDashCooldown`
+
+            var currentMadDashCooldown = 0;
+
+            var codes = new List<CodeInstruction>(instructions);
+            for (var i = 0; i < codes.Count; i++)
+            {
+                if (codes[i].operand != null && codes[i].operand.ToString() == "System.Single madDashCooldown")
+                {
+                    currentMadDashCooldown++;
+                    if (currentMadDashCooldown == 2)
+                    {
+                        SoundEventStartIndex = i + 2;
+                        SoundEventEndIndex = SoundEventStartIndex + 3;
+                    }
+                    Melon<Core>.Logger.Msg("Index of cooldown: " + i);
+                }
+                Melon<Core>.Logger.Msg(codes[i].ToString());
+            }
+            if (SoundEventStartIndex > -1 && SoundEventEndIndex > -1)
+            {
+                codes.RemoveRange(SoundEventStartIndex, 4);
+            }
+            return codes.AsEnumerable();
         }
     }
 }
