@@ -84,34 +84,36 @@ namespace FayeDashBoosted
     {
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            var SoundEventStartIndex = -1;
-            var SoundEventEndIndex = -1;
-
             // Remove the `CommonObjects.GetFMODSoundEvents().PlayEvent(this.madDashFMOD);` call
             // which is after the second `madDashCooldown`
 
             var currentMadDashCooldown = 0;
+            var nextSafeInstructions = 0;
+            var nextRemovedInstructions = 0;
 
-            var codes = new List<CodeInstruction>(instructions);
-            for (var i = 0; i < codes.Count; i++)
+            foreach (var instruction in instructions)
             {
-                if (codes[i].operand != null && codes[i].operand.ToString() == "System.Single madDashCooldown")
+                if (instruction.operand != null && instruction.operand.ToString() == "System.Single madDashCooldown")
                 {
                     currentMadDashCooldown++;
                     if (currentMadDashCooldown == 2)
                     {
-                        SoundEventStartIndex = i + 2;
-                        SoundEventEndIndex = SoundEventStartIndex + 3;
+                        nextSafeInstructions = 2;
+                        nextRemovedInstructions = 4;
                     }
-                    Melon<Core>.Logger.Msg("Index of cooldown: " + i);
                 }
-                Melon<Core>.Logger.Msg(codes[i].ToString());
+
+                if (nextRemovedInstructions > 0 && nextSafeInstructions <= 0)
+                {
+                    nextRemovedInstructions--;
+                    continue;
             }
-            if (SoundEventStartIndex > -1 && SoundEventEndIndex > -1)
-            {
-                codes.RemoveRange(SoundEventStartIndex, 4);
+
+                if(nextSafeInstructions > 0)
+                    nextSafeInstructions--;
+
+                yield return instruction;
             }
-            return codes.AsEnumerable();
         }
     }
 }
