@@ -1,6 +1,7 @@
 ﻿using HarmonyLib;
 using MelonLoader;
 using System.Diagnostics;
+using System.Reflection;
 using UnityEngine;
 
 [assembly: MelonInfo(typeof(FayeDashBoosted.Core), "FayeDashBoosted", "1.0.0", "NeverHeliOS", null)]
@@ -29,7 +30,7 @@ namespace FayeDashBoosted
             GUI.Label(new Rect(30, 20, 300, 100), "<color=#c0c0c0ff><size=40>Sound index: " + MadDashSoundIndex + " </size></color>");
         }
 
-        static void Prefix(out Stopwatch __state)
+        static void Prefix(out Stopwatch __state, Field.FieldAbilities __instance)
         {
             switch (MadDashSoundIndex)
             {
@@ -59,9 +60,9 @@ namespace FayeDashBoosted
                     break;
 
             }
-            
+
             MelonEvents.OnGUI.Subscribe(DrawCurrentSoundIndex, 100);
-            
+
             MadDashSoundIndex++;
             if (MadDashSoundIndex > 7)
                 MadDashSoundIndex = 0;
@@ -69,6 +70,10 @@ namespace FayeDashBoosted
             Melon<Core>.Logger.Msg("Ca se mad le dash");
             __state = new Stopwatch(); // assign your own state
             __state.Start();
+
+            Type fieldAbilitiesType = typeof(Field.FieldAbilities);
+            FieldInfo madDashDurationFieldInfo = fieldAbilitiesType.GetField("madDashDuration", BindingFlags.NonPublic | BindingFlags.Instance);
+            Melon<Core>.Logger.Msg("Mad dash duration: " + madDashDurationFieldInfo.GetValue(__instance));
         }
 
         static void Postfix(Stopwatch __state)
@@ -107,7 +112,7 @@ namespace FayeDashBoosted
                 {
                     nextRemovedInstructions--;
                     continue;
-            }
+                }
 
                 if(nextSafeInstructions > 0)
                     nextSafeInstructions--;
