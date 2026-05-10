@@ -4,6 +4,7 @@ using BepInEx.Configuration;
 using HarmonyLib;
 using System.Diagnostics;
 using System.Collections.Generic;
+using System.Collections;
 using System;
 using System.Reflection;
 using UnityEngine;
@@ -75,7 +76,18 @@ public class Plugin : BaseUnityPlugin
 
         static void Prefix(out Stopwatch __state, Field.FieldAbilities __instance)
         {
+            __state = new Stopwatch(); // assign your own state
+            __state.Start();
+
             Type fieldAbilitiesType = typeof(Field.FieldAbilities);
+
+            MethodInfo canUseMethodInfo = fieldAbilitiesType.GetMethod("CanUse", BindingFlags.NonPublic | BindingFlags.Instance);
+            FieldInfo partyFieldInfo = fieldAbilitiesType.GetField("party", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (!(bool)canUseMethodInfo.Invoke(__instance, new object[] {}) || ((Core.Party)partyFieldInfo.GetValue(__instance)).ActiveChar().characterIndex != 0)
+            {
+                return;
+            }
+
             switch(playedSoundIndexConfig.Value)
             {
                 case "confirmSound":
@@ -97,6 +109,7 @@ public class Plugin : BaseUnityPlugin
                     CommonObjects.GetFMODSoundEvents().PlayEvent(CommonObjects.GetShopsMenuUI().menuAudio.failSound);
                     break;
                 case "slink":
+                    // Overkill but allows me to rembember how to use reflection
                     FieldInfo slinkSoundFieldInfo = fieldAbilitiesType.GetField("slinkFMOD", BindingFlags.NonPublic | BindingFlags.Instance);
                     CommonObjects.GetFMODSoundEvents().PlayEvent((string)slinkSoundFieldInfo.GetValue(__instance));
                     break;
@@ -117,12 +130,29 @@ public class Plugin : BaseUnityPlugin
                     break;
             }
 
-            Logger.LogInfo($"Ca se mad le dash");
-            __state = new Stopwatch(); // assign your own state
-            __state.Start();
+            Type baseType = fieldAbilitiesType.BaseType;
+            FieldInfo blinkStartTimeFieldInfo = fieldAbilitiesType.GetField("blinkStartTime", BindingFlags.NonPublic | BindingFlags.Instance);
+            blinkStartTimeFieldInfo.SetValue(__instance, (float)0.25);
 
             FieldInfo madDashDurationFieldInfo = fieldAbilitiesType.GetField("madDashDuration", BindingFlags.NonPublic | BindingFlags.Instance);
+            MethodInfo applySlinkMethodInfo = fieldAbilitiesType.GetMethod("ApplySlink", BindingFlags.NonPublic | BindingFlags.Instance);
+
+            // Idk why i can't find this function so I'll do it the bruteforce way but I really should go back on this later (this wont be the case but a man can dream)
+            // MethodInfo startCoroutineMethodInfo = baseType.GetMethod("StartCoroutine", BindingFlags.IgnoreCase | BindingFlags.Static | BindingFlags.Instance | BindingFlags.FlattenHierarchy, null, new Type[] { typeof(System.Collections.IEnumerator)}, null);
+
+            MethodInfo startCoroutineMethodInfo = null;
+            MethodInfo[] allBaseMethods = baseType.GetMethods();
+            foreach(var baseMethod in allBaseMethods)
+            {
+                if(baseMethod.ToString() == "UnityEngine.Coroutine StartCoroutine(System.Collections.IEnumerator)")
+                    startCoroutineMethodInfo = baseMethod;
+            }
+
+            // Equivalent to: base.StartCoroutine(this.ApplySlink(this.madDashDuration))
+            startCoroutineMethodInfo.Invoke(__instance, new object[] {applySlinkMethodInfo.Invoke(__instance, new object[] {madDashDurationFieldInfo.GetValue(__instance)})});
+
             Logger.LogInfo("Mad dash duration: " + madDashDurationFieldInfo.GetValue(__instance));
+            Logger.LogInfo("Blink start time: " + blinkStartTimeFieldInfo.GetValue(__instance));
         }
 
         static void Postfix(Stopwatch __state)
