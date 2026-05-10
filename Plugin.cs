@@ -26,6 +26,7 @@ public class Plugin : BaseUnityPlugin
         playedSoundIndexConfig = Config.Bind("General.Sound", "PlayedSoundIndex", "classic", "The sound that will be played on dash (More info in the docs)");
 
         Harmony.CreateAndPatchAll(typeof(FieldAbilities_Activate_Patch));
+        Harmony.CreateAndPatchAll(typeof(FieldPlayer_StartDashing_Patch));
     }
 
     [HarmonyPatch(typeof(Field.FieldAbilities), "Activate")]
@@ -162,6 +163,44 @@ public class Plugin : BaseUnityPlugin
         {
             __state.Stop();
             // Logger.LogInfo(__state.Elapsed.ToString());
+        }
+    }
+
+    [HarmonyPatch(typeof(Field.FieldPlayer), "StartDashing")]
+    public static class FieldPlayer_StartDashing_Patch
+    {
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            // Remove the `this.Control.enabled = false;` instruction
+
+            var currentCurrentSpeedInstruction = 0;
+            var nextSafeInstructions = 0;
+            var nextRemovedInstructions = 0;
+
+            foreach (var instruction in instructions)
+            {
+                if (instruction.operand != null && instruction.operand.ToString() == "System.Single currentSpeed")
+                {
+                    currentCurrentSpeedInstruction++;
+                    if (currentCurrentSpeedInstruction == 1)
+                    {
+                        nextSafeInstructions = 1;
+                        nextRemovedInstructions = 4;
+                    }
+                }
+
+                if (nextRemovedInstructions > 0 && nextSafeInstructions <= 0)
+                {
+                    nextRemovedInstructions--;
+                    Logger.LogInfo("Removed: " + instruction.ToString());
+                    continue;
+                }
+
+                if(nextSafeInstructions > 0)
+                    nextSafeInstructions--;
+
+                yield return instruction;
+            }
         }
     }
 }
