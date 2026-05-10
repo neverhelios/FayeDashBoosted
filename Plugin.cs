@@ -10,6 +10,7 @@ using System.Reflection;
 using UnityEngine;
 using PixelCrushers.DialogueSystem;
 using Global.UI;
+using Field;
 
 namespace FayeDashBoosted;
 
@@ -18,7 +19,12 @@ public class Plugin : BaseUnityPlugin
 {
     internal static new ManualLogSource Logger;
     private static ConfigEntry<String> playedSoundIndexConfig;
+
     private static ConfigEntry<float> dashDurationConfig;
+    private static ConfigEntry<float> dashCooldownConfig;
+    private static ConfigEntry<float> dashSpeedConfig;
+
+    private static ConfigEntry<bool> dashRepeatKeyConfig;
 
     private void Awake()
     {
@@ -27,13 +33,38 @@ public class Plugin : BaseUnityPlugin
         Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
 
         playedSoundIndexConfig = Config.Bind("General.Sound", "PlayedSoundIndex", "classic", "The sound that will be played on dash (More info in the docs)");
+
         dashDurationConfig = Config.Bind("General.Dash", "DashDuration", 1.0f, "The duration of the dash in seconds");
+        dashCooldownConfig = Config.Bind("General.Dash", "DashCooldown", 0.1f, "The cooldown between the dashes in seconds");
+        dashSpeedConfig = Config.Bind("General.Dash", "DashSpeed", 3.0f, "The speed mutiplicator of the dash (Warning, if you go higher than four, there is chanes that you miss loading zones triggers)");
+
+        dashRepeatKeyConfig = Config.Bind("General.Dash", "RepeatKey", true, "Set to true if you want to continuously dash by keeping the key down");
 
         Harmony.CreateAndPatchAll(typeof(FieldAbilities_Activate_Patch));
+        Harmony.CreateAndPatchAll(typeof(FieldPlayerControl_CheckAbility_Patch));
         Harmony.CreateAndPatchAll(typeof(FieldPlayer_StartDashing_Patch));
     }
+    [HarmonyPatch(typeof(FieldPlayerControl), "CheckAbility")]
+    public static class FieldPlayerControl_CheckAbility_Patch
+    {
+        static bool Prefix(FieldPlayerControl __instance)
+        {
+            if(dashRepeatKeyConfig.Value)
+            {
+                Type fieldPlayerControlType = typeof(FieldPlayerControl);
+                FieldInfo inputFieldInfo = fieldPlayerControlType.GetField("input", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (((Rewired.Player)inputFieldInfo.GetValue(__instance)).GetButton("FieldAbility"))
+                {
+                    FieldInfo abilitiesFieldInfo = fieldPlayerControlType.GetField("abilities", BindingFlags.NonPublic | BindingFlags.Instance);
+                    ((FieldAbilities)abilitiesFieldInfo.GetValue(__instance)).Activate();
+                }
+                return false; // Skip entierely the original function
+            }
+            return true;
+        }
+    }
 
-    [HarmonyPatch(typeof(Field.FieldAbilities), "Activate")]
+    [HarmonyPatch(typeof(FieldAbilities), "Activate")]
     public static class FieldAbilities_Activate_Patch
     {
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
@@ -79,12 +110,12 @@ public class Plugin : BaseUnityPlugin
             }
         }
 
-        static void Prefix(out Stopwatch __state, Field.FieldAbilities __instance)
+        static void Prefix(out Stopwatch __state, FieldAbilities __instance)
         {
             __state = new Stopwatch(); // assign your own state
             __state.Start();
 
-            Type fieldAbilitiesType = typeof(Field.FieldAbilities);
+            Type fieldAbilitiesType = typeof(FieldAbilities);
 
             MethodInfo canUseMethodInfo = fieldAbilitiesType.GetMethod("CanUse", BindingFlags.NonPublic | BindingFlags.Instance);
             FieldInfo partyFieldInfo = fieldAbilitiesType.GetField("party", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -142,6 +173,12 @@ public class Plugin : BaseUnityPlugin
             FieldInfo blinkStartTimeFieldInfo = fieldAbilitiesType.GetField("blinkStartTime", BindingFlags.NonPublic | BindingFlags.Instance);
             blinkStartTimeFieldInfo.SetValue(__instance, (float)madDashDurationFieldInfo.GetValue(__instance) * 0.75f);
 
+            FieldInfo madDashCooldownFieldInfo = fieldAbilitiesType.GetField("madDashCooldown", BindingFlags.NonPublic | BindingFlags.Instance);
+            madDashCooldownFieldInfo.SetValue(__instance, dashCooldownConfig.Value);
+
+            FieldInfo madDashSpeedIncreaseFieldInfo = fieldAbilitiesType.GetField("madDashSpeedIncrease", BindingFlags.NonPublic | BindingFlags.Instance);
+            madDashSpeedIncreaseFieldInfo.SetValue(__instance, dashSpeedConfig.Value);
+
             MethodInfo applySlinkMethodInfo = fieldAbilitiesType.GetMethod("ApplySlink", BindingFlags.NonPublic | BindingFlags.Instance);
 
             // Idk why i can't find this function so I'll do it the bruteforce way but I really should go back on this later (this wont be the case but a man can dream)
@@ -159,7 +196,7 @@ public class Plugin : BaseUnityPlugin
             // Equivalent to: base.StartCoroutine(this.ApplySlink(this.madDashDuration))
             startCoroutineMethodInfo.Invoke(__instance, new object[] {applySlinkMethodInfo.Invoke(__instance, new object[] {madDashDurationFieldInfo.GetValue(__instance)})});
 
-            ShowTreasurePopup("C'est la SUITE, de la SUITE", "Quand j'dis Aladin", "Tout le monde dit le prince",  "Je suis passe partout, de fort boyard,\nje guide les casse-cou, dans des traquenards", "Archipelago Item", false, "item-classchange");
+            // ShowTreasurePopup("C'est la SUITE, de la SUITE", "Quand j'dis Aladin", "Tout le monde dit le prince",  "Je suis passe partout, de fort boyard,\nje guide les casse-cou, dans des traquenards", "Archipelago Item", false, "item-classchange");
         }
 
         static void Postfix(Stopwatch __state)
@@ -169,7 +206,7 @@ public class Plugin : BaseUnityPlugin
         }
     }
 
-    [HarmonyPatch(typeof(Field.FieldPlayer), "StartDashing")]
+    [HarmonyPatch(typeof(FieldPlayer), "StartDashing")]
     public static class FieldPlayer_StartDashing_Patch
     {
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
@@ -228,8 +265,8 @@ public class Plugin : BaseUnityPlugin
 
     public static void ShowTreasurePopup(string name, string title, string subtitle, string description, string charMod, bool activateCharMod, string treasureSprite)
     {
-        Field.TreasureUI treasureUI = CommonObjects.GetTreasureUI();
-        Type treasureUIType = typeof(Field.TreasureUI);
+        TreasureUI treasureUI = CommonObjects.GetTreasureUI();
+        Type treasureUIType = typeof(TreasureUI);
 
         FieldInfo continueButtonFieldInfo = treasureUIType.GetField("continueButton", BindingFlags.NonPublic | BindingFlags.Instance);
         ((Global.UI.StealFocus)continueButtonFieldInfo.GetValue(treasureUI)).enabled = false;
