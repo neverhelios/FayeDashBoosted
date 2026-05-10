@@ -24,12 +24,10 @@ public class Plugin : BaseUnityPlugin
 
         playedSoundIndexConfig = Config.Bind("General.Sound", "PlayedSoundIndex", "classic", "The sound that will be played on dash (More info in the docs)");
 
-        Harmony.CreateAndPatchAll(typeof(FayeDashPatch));
         Harmony.CreateAndPatchAll(typeof(FieldAbilities_Activate_Patch));
     }
 
-    [HarmonyPatch(typeof(Field.FieldAbilities))]
-    [HarmonyPatch("Activate")]
+    [HarmonyPatch(typeof(Field.FieldAbilities), "Activate")]
     public static class FieldAbilities_Activate_Patch
     {
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
@@ -74,12 +72,7 @@ public class Plugin : BaseUnityPlugin
                 yield return instruction;
             }
         }
-    }
-    
 
-    [HarmonyPatch(typeof(Field.FieldAbilities), "Activate")]
-    class FayeDashPatch
-    {
         static void Prefix(out Stopwatch __state, Field.FieldAbilities __instance)
         {
             Type fieldAbilitiesType = typeof(Field.FieldAbilities);
@@ -135,7 +128,7 @@ public class Plugin : BaseUnityPlugin
         static void Postfix(Stopwatch __state)
         {
             __state.Stop();
-            Logger.LogInfo(__state.Elapsed.ToString());
+            // Logger.LogInfo(__state.Elapsed.ToString());
         }
     }
 }
