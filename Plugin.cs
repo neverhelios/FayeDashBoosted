@@ -1,5 +1,6 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
+using BepInEx.Configuration;
 using HarmonyLib;
 using System.Diagnostics;
 using System.Collections.Generic;
@@ -13,16 +14,20 @@ namespace FayeDashBoosted;
 public class Plugin : BaseUnityPlugin
 {
     internal static new ManualLogSource Logger;
-        
+    private static ConfigEntry<String> playedSoundIndexConfig;
+
     private void Awake()
     {
         // Plugin startup logic
         Logger = base.Logger;
         Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
+
+        playedSoundIndexConfig = Config.Bind("General.Sound", "PlayedSoundIndex", "classic", "The sound that will be played on dash (More info in the docs)");
+
         Harmony.CreateAndPatchAll(typeof(FayeDashPatch));
         Harmony.CreateAndPatchAll(typeof(FieldAbilities_Activate_Patch));
     }
-    
+
     [HarmonyPatch(typeof(Field.FieldAbilities))]
     [HarmonyPatch("Activate")]
     public static class FieldAbilities_Activate_Patch
@@ -45,8 +50,15 @@ public class Plugin : BaseUnityPlugin
                     currentMadDashCooldown++;
                     if (currentMadDashCooldown == 2)
                     {
-                        nextSafeInstructions = 2;
-                        nextRemovedInstructions = 4;
+                        if(playedSoundIndexConfig.Value != "classic")
+                        {
+                            nextSafeInstructions = 2;
+                            nextRemovedInstructions = 4;
+                        }
+                        else
+                        {
+                            Logger.LogInfo("EN FAIT NON");
+                        }
                     }
                 }
 
@@ -68,49 +80,54 @@ public class Plugin : BaseUnityPlugin
     [HarmonyPatch(typeof(Field.FieldAbilities), "Activate")]
     class FayeDashPatch
     {
-        public static void DrawCurrentSoundIndex()
-        {
-            // GUI.Label(new Rect(30, 20, 300, 100), "<color=#c0c0c0ff><size=40>Sound index: " + 0 + " </size></color>");
-        }
-
         static void Prefix(out Stopwatch __state, Field.FieldAbilities __instance)
         {
-            switch (0)
+            Type fieldAbilitiesType = typeof(Field.FieldAbilities);
+            switch(playedSoundIndexConfig.Value)
             {
-                case 0:
+                case "confirmSound":
                     CommonObjects.GetFMODSoundEvents().PlayEvent(CommonObjects.GetShopsMenuUI().menuAudio.confirmSound);
                     break;
-                case 1:
+                case "cancelSound":
                     CommonObjects.GetFMODSoundEvents().PlayEvent(CommonObjects.GetShopsMenuUI().menuAudio.cancelSound);
                     break;
-                case 2:
-                    CommonObjects.GetFMODSoundEvents().PlayEvent(CommonObjects.GetShopsMenuUI().menuAudio.menuSound);
-                    break;
-                case 3:
+                case "merchUseSound":
                     CommonObjects.GetFMODSoundEvents().PlayEvent(CommonObjects.GetShopsMenuUI().menuAudio.merchUseSound);
                     break;
-                case 4:
+                case "beatBoostSound":
                     CommonObjects.GetFMODSoundEvents().PlayEvent(CommonObjects.GetShopsMenuUI().menuAudio.beatBoostSound);
                     break;
-                case 5:
+                case "purchaseSound":
                     CommonObjects.GetFMODSoundEvents().PlayEvent(CommonObjects.GetShopsMenuUI().menuAudio.purchaseSound);
                     break;
-                case 6:
+                case "failSound":
                     CommonObjects.GetFMODSoundEvents().PlayEvent(CommonObjects.GetShopsMenuUI().menuAudio.failSound);
                     break;
-                case 7:
-                    CommonObjects.GetFMODSoundEvents().PlayEvent(CommonObjects.GetShopsMenuUI().menuAudio.equipSound);
+                case "slink":
+                    FieldInfo slinkSoundFieldInfo = fieldAbilitiesType.GetField("slinkFMOD", BindingFlags.NonPublic | BindingFlags.Instance);
+                    CommonObjects.GetFMODSoundEvents().PlayEvent((string)slinkSoundFieldInfo.GetValue(__instance));
                     break;
-
+                case "slinkFailure":
+                    FieldInfo slinkFailureSoundFieldInfo = fieldAbilitiesType.GetField("slinkFailureFMODNick", BindingFlags.NonPublic | BindingFlags.Instance);
+                    CommonObjects.GetFMODSoundEvents().PlayEvent((string)slinkFailureSoundFieldInfo.GetValue(__instance));
+                    break;
+                case "shockwave":
+                    CommonObjects.GetFMODSoundEvents().PlayEvent("Shockwave");
+                    break;
+                case "kwak-double-scratch":
+                    CommonObjects.GetFMODSoundEvents().PlayEvent("KwakDoubleScratch");
+                    break;
+                case "kwak-clap":
+                    CommonObjects.GetFMODSoundEvents().PlayEvent("KwakClap");
+                    break;
+                case "classic":
+                    break;
             }
-
-            // MelonEvents.OnGUI.Subscribe(DrawCurrentSoundIndex, 100);
 
             Logger.LogInfo($"Ca se mad le dash");
             __state = new Stopwatch(); // assign your own state
             __state.Start();
 
-            Type fieldAbilitiesType = typeof(Field.FieldAbilities);
             FieldInfo madDashDurationFieldInfo = fieldAbilitiesType.GetField("madDashDuration", BindingFlags.NonPublic | BindingFlags.Instance);
             Logger.LogInfo("Mad dash duration: " + madDashDurationFieldInfo.GetValue(__instance));
         }

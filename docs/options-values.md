@@ -1,0 +1,14 @@
+For the `PlayedSound`, the currently available sounds are:
+- classic (The normal dash sound)
+- confirmSound
+- cancelSound
+- merchUseSound
+- beatBoostSound
+- purchaseSound
+- failSound
+- equipSound
+- slink
+- slinkFailure
+- shockwave
+- kwak-double-scratch
+- kwak-clap
