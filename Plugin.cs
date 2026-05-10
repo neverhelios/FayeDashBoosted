@@ -130,16 +130,19 @@ public class Plugin : BaseUnityPlugin
                     break;
             }
 
-            Type baseType = fieldAbilitiesType.BaseType;
-            FieldInfo blinkStartTimeFieldInfo = fieldAbilitiesType.GetField("blinkStartTime", BindingFlags.NonPublic | BindingFlags.Instance);
-            blinkStartTimeFieldInfo.SetValue(__instance, (float)0.25);
 
             FieldInfo madDashDurationFieldInfo = fieldAbilitiesType.GetField("madDashDuration", BindingFlags.NonPublic | BindingFlags.Instance);
+            madDashDurationFieldInfo.SetValue(__instance, 1.0f);
+
+            FieldInfo blinkStartTimeFieldInfo = fieldAbilitiesType.GetField("blinkStartTime", BindingFlags.NonPublic | BindingFlags.Instance);
+            blinkStartTimeFieldInfo.SetValue(__instance, (float)madDashDurationFieldInfo.GetValue(__instance) * 0.75f);
+
             MethodInfo applySlinkMethodInfo = fieldAbilitiesType.GetMethod("ApplySlink", BindingFlags.NonPublic | BindingFlags.Instance);
 
             // Idk why i can't find this function so I'll do it the bruteforce way but I really should go back on this later (this wont be the case but a man can dream)
             // MethodInfo startCoroutineMethodInfo = baseType.GetMethod("StartCoroutine", BindingFlags.IgnoreCase | BindingFlags.Static | BindingFlags.Instance | BindingFlags.FlattenHierarchy, null, new Type[] { typeof(System.Collections.IEnumerator)}, null);
 
+            Type baseType = fieldAbilitiesType.BaseType;
             MethodInfo startCoroutineMethodInfo = null;
             MethodInfo[] allBaseMethods = baseType.GetMethods();
             foreach(var baseMethod in allBaseMethods)
