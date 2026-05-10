@@ -16,6 +16,7 @@ public class Plugin : BaseUnityPlugin
 {
     internal static new ManualLogSource Logger;
     private static ConfigEntry<String> playedSoundIndexConfig;
+    private static ConfigEntry<float> dashDurationConfig;
 
     private void Awake()
     {
@@ -24,6 +25,7 @@ public class Plugin : BaseUnityPlugin
         Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
 
         playedSoundIndexConfig = Config.Bind("General.Sound", "PlayedSoundIndex", "classic", "The sound that will be played on dash (More info in the docs)");
+        dashDurationConfig = Config.Bind("General.Dash", "DashDuration", 1.0f, "The duration of the dash in seconds");
 
         Harmony.CreateAndPatchAll(typeof(FieldAbilities_Activate_Patch));
         Harmony.CreateAndPatchAll(typeof(FieldPlayer_StartDashing_Patch));
@@ -133,7 +135,7 @@ public class Plugin : BaseUnityPlugin
 
 
             FieldInfo madDashDurationFieldInfo = fieldAbilitiesType.GetField("madDashDuration", BindingFlags.NonPublic | BindingFlags.Instance);
-            madDashDurationFieldInfo.SetValue(__instance, 1.0f);
+            madDashDurationFieldInfo.SetValue(__instance, dashDurationConfig.Value);
 
             FieldInfo blinkStartTimeFieldInfo = fieldAbilitiesType.GetField("blinkStartTime", BindingFlags.NonPublic | BindingFlags.Instance);
             blinkStartTimeFieldInfo.SetValue(__instance, (float)madDashDurationFieldInfo.GetValue(__instance) * 0.75f);
