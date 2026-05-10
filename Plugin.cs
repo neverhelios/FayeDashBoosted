@@ -8,6 +8,8 @@ using System.Collections;
 using System;
 using System.Reflection;
 using UnityEngine;
+using PixelCrushers.DialogueSystem;
+using Global.UI;
 
 namespace FayeDashBoosted;
 
@@ -157,8 +159,7 @@ public class Plugin : BaseUnityPlugin
             // Equivalent to: base.StartCoroutine(this.ApplySlink(this.madDashDuration))
             startCoroutineMethodInfo.Invoke(__instance, new object[] {applySlinkMethodInfo.Invoke(__instance, new object[] {madDashDurationFieldInfo.GetValue(__instance)})});
 
-            Logger.LogInfo("Mad dash duration: " + madDashDurationFieldInfo.GetValue(__instance));
-            Logger.LogInfo("Blink start time: " + blinkStartTimeFieldInfo.GetValue(__instance));
+            ShowTreasurePopup("C'est la SUITE, de la SUITE", "Quand j'dis Aladin", "Tout le monde dit le prince",  "Je suis passe partout, de fort boyard,\nje guide les casse-cou, dans des traquenards", "Archipelago Item", false, "item-classchange");
         }
 
         static void Postfix(Stopwatch __state)
@@ -194,7 +195,6 @@ public class Plugin : BaseUnityPlugin
                 if (nextRemovedInstructions > 0 && nextSafeInstructions <= 0)
                 {
                     nextRemovedInstructions--;
-                    Logger.LogInfo("Removed: " + instruction.ToString());
                     continue;
                 }
 
@@ -205,5 +205,57 @@ public class Plugin : BaseUnityPlugin
             }
         }
     }
+
+    public static void ListAllItems()
+    {
+        DialogueSystemController DialogueInstance = DialogueManager.instance;
+
+        foreach(Item curr_item in DialogueInstance.databaseManager.masterDatabase.items)
+        {
+            string text = curr_item.LookupValue("IconSlot");
+            if (!string.IsNullOrEmpty(text))
+            {
+                Logger.LogInfo("Has icon slot: " + curr_item.Name + "\nWhich is " + text);
+            }
+            else
+            {
+                Logger.LogInfo(curr_item.Name);
+            }
+        }
+        Item item = DialogueManager.DatabaseManager.masterDatabase.GetItem("[Treasure] MODPODClass");
+        Logger.LogInfo("Item " + item.Name + " found on database");
+    }
+
+    public static void ShowTreasurePopup(string name, string title, string subtitle, string description, string charMod, bool activateCharMod, string treasureSprite)
+    {
+        Field.TreasureUI treasureUI = CommonObjects.GetTreasureUI();
+        Type treasureUIType = typeof(Field.TreasureUI);
+
+        FieldInfo continueButtonFieldInfo = treasureUIType.GetField("continueButton", BindingFlags.NonPublic | BindingFlags.Instance);
+        ((Global.UI.StealFocus)continueButtonFieldInfo.GetValue(treasureUI)).enabled = false;
+        treasureUI.window.SetActive(value: true);
+
+        MethodInfo FocusContinueAfterDelayMethodInfo = treasureUIType.GetMethod("FocusContinueAfterDelay", BindingFlags.NonPublic | BindingFlags.Instance);
+        Logger.LogInfo("FocusContinueAfterDelayMethodInfo: " + FocusContinueAfterDelayMethodInfo.ToString());
+        treasureUI.StartCoroutine((IEnumerator)FocusContinueAfterDelayMethodInfo.Invoke(treasureUI,  new object[] {}));
+
+
+        ItemWindow itemWindow = treasureUI.itemWindow;
+        UIHelper.SetText(itemWindow.gearName, name);
+        UIHelper.SetText(itemWindow.gearType, title);
+        Global.UI.UIHelper.SetText(treasureUI.tutorialText, subtitle);
+        UIHelper.SetText(itemWindow.effectText, description);
+
+        Type itemWindowType = typeof(ItemWindow);
+        itemWindow.HideAllWindows();
+
+        FieldInfo modEligibleCharNameFieldInfo = itemWindowType.GetField("modEligibleCharName", BindingFlags.NonPublic | BindingFlags.Instance);
+        UIHelper.SetText((TMPro.TextMeshProUGUI)modEligibleCharNameFieldInfo.GetValue(itemWindow), charMod);
+        FieldInfo eligibleCharContainerFieldInfo = itemWindowType.GetField("eligibleCharContainer", BindingFlags.NonPublic | BindingFlags.Instance);
+        ((GameObject)eligibleCharContainerFieldInfo.GetValue(itemWindow)).SetActive(activateCharMod);
+
+        UIHelper.SetImageSprite(treasureUI.itemWindow.gearIcon, CommonObjects.GetGlobal().assetLoader.GetGlobalSprite(treasureSprite));
+    }
+
 }
 
