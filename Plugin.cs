@@ -8,6 +8,7 @@ using System.Collections;
 using System;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using PixelCrushers.DialogueSystem;
 using Global.UI;
 using Field;
@@ -26,6 +27,8 @@ public class Plugin : BaseUnityPlugin
 
     private static ConfigEntry<bool> dashRepeatKeyConfig;
 
+    private static ConfigEntry<bool> logSceneLoadedConfig;
+
     private void Awake()
     {
         // Plugin startup logic
@@ -40,10 +43,24 @@ public class Plugin : BaseUnityPlugin
 
         dashRepeatKeyConfig = Config.Bind("General.Dash", "RepeatKey", true, "Set to true if you want to continuously dash by keeping the key down");
 
+        logSceneLoadedConfig = Config.Bind("Debug.Logging", "LogScenesLoaded", true, "For developpement purposes");
+
+        if(logSceneLoadedConfig.Value)
+        {
+            SceneManager.sceneLoaded += SceneManagerLogger.OnSceneLoaded;
+            SceneManager.sceneUnloaded += SceneManagerLogger.OnSceneUnloaded;
+            SceneManager.activeSceneChanged += SceneManagerLogger.OnActiveSceneChanged;
+        }
+
+
         Harmony.CreateAndPatchAll(typeof(FieldAbilities_Activate_Patch));
         Harmony.CreateAndPatchAll(typeof(FieldPlayerControl_CheckAbility_Patch));
         Harmony.CreateAndPatchAll(typeof(FieldPlayer_StartDashing_Patch));
+
+        Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} has finished patching!");
+
     }
+
     [HarmonyPatch(typeof(FieldPlayerControl), "CheckAbility")]
     public static class FieldPlayerControl_CheckAbility_Patch
     {
