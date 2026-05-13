@@ -52,7 +52,7 @@ public class Plugin : BaseUnityPlugin
             SceneManager.activeSceneChanged += SceneManagerLogger.OnActiveSceneChanged;
         }
 
-
+        Harmony.CreateAndPatchAll(typeof(CoreInit_Start_Patch));
         Harmony.CreateAndPatchAll(typeof(FieldAbilities_Activate_Patch));
         Harmony.CreateAndPatchAll(typeof(FieldPlayerControl_CheckAbility_Patch));
         Harmony.CreateAndPatchAll(typeof(FieldPlayer_StartDashing_Patch));
@@ -139,6 +139,17 @@ public class Plugin : BaseUnityPlugin
             if (!(bool)canUseMethodInfo.Invoke(__instance, new object[] {}) || ((Core.Party)partyFieldInfo.GetValue(__instance)).ActiveChar().characterIndex != 0)
             {
                 return;
+            }
+
+            DashCounter dashCounterInstance = GameObject.Find("Dash Counter").GetComponent<DashCounter>();
+            if(dashCounterInstance != null)
+            {
+                dashCounterInstance.currentDashNb ++;
+                Logger.LogInfo($"Dash number {dashCounterInstance.currentDashNb}");
+            }
+            else
+            {
+                Logger.LogInfo($"Couldn't find the DashCounter sorry");
             }
 
             switch(playedSoundIndexConfig.Value)
