@@ -4,13 +4,11 @@ using BepInEx.Configuration;
 using HarmonyLib;
 using System.Diagnostics;
 using System.Collections.Generic;
-using System.Collections;
 using System;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using PixelCrushers.DialogueSystem;
-using Global.UI;
 using Field;
 
 namespace FayeDashBoosted;
@@ -27,6 +25,9 @@ public class Plugin : BaseUnityPlugin
 
     private static ConfigEntry<bool> dashRepeatKeyConfig;
 
+    private static ConfigEntry<bool> dashAchievementsConfig;
+    private static ConfigEntry<bool> dashAchievementsDisplayConfig;
+
     private static ConfigEntry<bool> logSceneLoadedConfig;
 
     private void Awake()
@@ -39,9 +40,12 @@ public class Plugin : BaseUnityPlugin
 
         dashDurationConfig = Config.Bind("General.Dash", "DashDuration", 1.0f, "The duration of the dash in seconds");
         dashCooldownConfig = Config.Bind("General.Dash", "DashCooldown", 0.1f, "The cooldown between the dashes in seconds");
-        dashSpeedConfig = Config.Bind("General.Dash", "DashSpeed", 3.0f, "The speed mutiplicator of the dash (Warning, if you go higher than four, there is chanes that you miss loading zones triggers)");
+        dashSpeedConfig = Config.Bind("General.Dash", "DashSpeed", 3.0f, "The speed mutiplicator of the dash (Warning, if you go higher than four, there is chances that you miss loading zones triggers)");
 
         dashRepeatKeyConfig = Config.Bind("General.Dash", "RepeatKey", true, "Set to true if you want to continuously dash by keeping the key down");
+
+        dashAchievementsConfig = Config.Bind("General.Achievements", "Activate achievements", true, "Adds popups when you do some number of dashes, keep dashing my friend !\nDesactivating this also desactivate counting the number of dashes, I don't want you you to wake up one day having the FOMO of the first tresholds knowing you won't ever get them again:(");
+        dashAchievementsDisplayConfig = Config.Bind("General.Achievements", "Display achievements", true, "Removes ONLY the display of the popup (needs [Activate achievements] set to true)");
 
         logSceneLoadedConfig = Config.Bind("Debug.Logging", "LogScenesLoaded", true, "For developpement purposes");
 
@@ -141,15 +145,17 @@ public class Plugin : BaseUnityPlugin
                 return;
             }
 
-            DashCounter dashCounterInstance = GameObject.Find("Dash Counter").GetComponent<DashCounter>();
-            if(dashCounterInstance != null)
+            if(dashAchievementsConfig.Value)
             {
-                dashCounterInstance.currentDashNb ++;
-                Logger.LogInfo($"Dash number {dashCounterInstance.currentDashNb}");
-            }
-            else
-            {
-                Logger.LogInfo($"Couldn't find the DashCounter sorry");
+                DashCounter dashCounterInstance = GameObject.Find("Dash Counter").GetComponent<DashCounter>();
+                if(dashCounterInstance != null)
+                {
+                    dashCounterInstance.DoOneDash(dashAchievementsDisplayConfig.Value); 
+                }
+                else
+                {
+                    Logger.LogInfo($"Couldn't find the DashCounter sorry");
+                }
             }
 
             switch(playedSoundIndexConfig.Value)
@@ -223,8 +229,6 @@ public class Plugin : BaseUnityPlugin
 
             // Equivalent to: base.StartCoroutine(this.ApplySlink(this.madDashDuration))
             startCoroutineMethodInfo.Invoke(__instance, new object[] {applySlinkMethodInfo.Invoke(__instance, new object[] {madDashDurationFieldInfo.GetValue(__instance)})});
-
-            // ShowTreasurePopup("C'est la SUITE, de la SUITE", "Quand j'dis Aladin", "Tout le monde dit le prince",  "Je suis passe partout, de fort boyard,\nje guide les casse-cou, dans des traquenards", "Archipelago Item", false, "item-classchange");
         }
 
         static void Postfix(Stopwatch __state)
@@ -291,36 +295,7 @@ public class Plugin : BaseUnityPlugin
         Logger.LogInfo("Item " + item.Name + " found on database");
     }
 
-    public static void ShowTreasurePopup(string name, string title, string subtitle, string description, string charMod, bool activateCharMod, string treasureSprite)
-    {
-        TreasureUI treasureUI = CommonObjects.GetTreasureUI();
-        Type treasureUIType = typeof(TreasureUI);
 
-        FieldInfo continueButtonFieldInfo = treasureUIType.GetField("continueButton", BindingFlags.NonPublic | BindingFlags.Instance);
-        ((Global.UI.StealFocus)continueButtonFieldInfo.GetValue(treasureUI)).enabled = false;
-        treasureUI.window.SetActive(value: true);
-
-        MethodInfo FocusContinueAfterDelayMethodInfo = treasureUIType.GetMethod("FocusContinueAfterDelay", BindingFlags.NonPublic | BindingFlags.Instance);
-        Logger.LogInfo("FocusContinueAfterDelayMethodInfo: " + FocusContinueAfterDelayMethodInfo.ToString());
-        treasureUI.StartCoroutine((IEnumerator)FocusContinueAfterDelayMethodInfo.Invoke(treasureUI,  new object[] {}));
-
-
-        ItemWindow itemWindow = treasureUI.itemWindow;
-        UIHelper.SetText(itemWindow.gearName, name);
-        UIHelper.SetText(itemWindow.gearType, title);
-        Global.UI.UIHelper.SetText(treasureUI.tutorialText, subtitle);
-        UIHelper.SetText(itemWindow.effectText, description);
-
-        Type itemWindowType = typeof(ItemWindow);
-        itemWindow.HideAllWindows();
-
-        FieldInfo modEligibleCharNameFieldInfo = itemWindowType.GetField("modEligibleCharName", BindingFlags.NonPublic | BindingFlags.Instance);
-        UIHelper.SetText((TMPro.TextMeshProUGUI)modEligibleCharNameFieldInfo.GetValue(itemWindow), charMod);
-        FieldInfo eligibleCharContainerFieldInfo = itemWindowType.GetField("eligibleCharContainer", BindingFlags.NonPublic | BindingFlags.Instance);
-        ((GameObject)eligibleCharContainerFieldInfo.GetValue(itemWindow)).SetActive(activateCharMod);
-
-        UIHelper.SetImageSprite(treasureUI.itemWindow.gearIcon, CommonObjects.GetGlobal().assetLoader.GetGlobalSprite(treasureSprite));
-    }
 
 }
 
