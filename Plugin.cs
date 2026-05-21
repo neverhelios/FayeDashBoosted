@@ -44,12 +44,12 @@ public class Plugin : BaseUnityPlugin
 
         dashRepeatKeyConfig = Config.Bind("General.Dash", "RepeatKey", true, "Set to true if you want to continuously dash by keeping the key down");
 
-        dashAchievementsConfig = Config.Bind("General.Achievements", "Activate achievements", true, "Adds popups when you do some number of dashes, keep dashing my friend !\nDesactivating this also desactivate counting the number of dashes, I don't want you you to wake up one day having the FOMO of the first tresholds knowing you won't ever get them again:(");
-        dashAchievementsDisplayConfig = Config.Bind("General.Achievements", "Display achievements", true, "Removes ONLY the display of the popup (needs [Activate achievements] set to true)");
+        dashAchievementsConfig = Config.Bind("General.Achievements", "ActivateAchievements", true, "Adds popups when you do some number of dashes, keep dashing my friend !\nDesactivating this also desactivate counting the number of dashes, I don't want you you to wake up one day having the FOMO of the first tresholds knowing you won't ever get them again:(");
+        dashAchievementsDisplayConfig = Config.Bind("General.Achievements", "DisplayAchievements", true, "Removes ONLY the display of the popup (needs [Activate achievements] set to true)");
 
         logSceneLoadedConfig = Config.Bind("Debug.Logging", "LogScenesLoaded", true, "For developpement purposes");
 
-        if(logSceneLoadedConfig.Value)
+        if (logSceneLoadedConfig.Value)
         {
             SceneManager.sceneLoaded += SceneManagerLogger.OnSceneLoaded;
             SceneManager.sceneUnloaded += SceneManagerLogger.OnSceneUnloaded;
@@ -70,7 +70,7 @@ public class Plugin : BaseUnityPlugin
     {
         static bool Prefix(FieldPlayerControl __instance)
         {
-            if(dashRepeatKeyConfig.Value)
+            if (dashRepeatKeyConfig.Value)
             {
                 Type fieldPlayerControlType = typeof(FieldPlayerControl);
                 FieldInfo inputFieldInfo = fieldPlayerControlType.GetField("input", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -106,7 +106,7 @@ public class Plugin : BaseUnityPlugin
                     currentMadDashCooldown++;
                     if (currentMadDashCooldown == 2)
                     {
-                        if(playedSoundIndexConfig.Value != "classic")
+                        if (playedSoundIndexConfig.Value != "classic")
                         {
                             nextSafeInstructions = 2;
                             nextRemovedInstructions = 4;
@@ -124,7 +124,7 @@ public class Plugin : BaseUnityPlugin
                     continue;
                 }
 
-                if(nextSafeInstructions > 0)
+                if (nextSafeInstructions > 0)
                     nextSafeInstructions--;
 
                 yield return instruction;
@@ -140,17 +140,17 @@ public class Plugin : BaseUnityPlugin
 
             MethodInfo canUseMethodInfo = fieldAbilitiesType.GetMethod("CanUse", BindingFlags.NonPublic | BindingFlags.Instance);
             FieldInfo partyFieldInfo = fieldAbilitiesType.GetField("party", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (!(bool)canUseMethodInfo.Invoke(__instance, new object[] {}) || ((Core.Party)partyFieldInfo.GetValue(__instance)).ActiveChar().characterIndex != 0)
+            if (!(bool)canUseMethodInfo.Invoke(__instance, new object[] { }) || ((Core.Party)partyFieldInfo.GetValue(__instance)).ActiveChar().characterIndex != 0)
             {
                 return;
             }
 
-            if(dashAchievementsConfig.Value)
+            if (dashAchievementsConfig.Value)
             {
                 DashCounter dashCounterInstance = GameObject.Find("Dash Counter").GetComponent<DashCounter>();
-                if(dashCounterInstance != null)
+                if (dashCounterInstance != null)
                 {
-                    dashCounterInstance.DoOneDash(dashAchievementsDisplayConfig.Value); 
+                    dashCounterInstance.DoOneDash(dashAchievementsDisplayConfig.Value);
                 }
                 else
                 {
@@ -158,7 +158,7 @@ public class Plugin : BaseUnityPlugin
                 }
             }
 
-            switch(playedSoundIndexConfig.Value)
+            switch (playedSoundIndexConfig.Value)
             {
                 case "confirmSound":
                     CommonObjects.GetFMODSoundEvents().PlayEvent(CommonObjects.GetShopsMenuUI().menuAudio.confirmSound);
@@ -221,14 +221,14 @@ public class Plugin : BaseUnityPlugin
             Type baseType = fieldAbilitiesType.BaseType;
             MethodInfo startCoroutineMethodInfo = null;
             MethodInfo[] allBaseMethods = baseType.GetMethods();
-            foreach(var baseMethod in allBaseMethods)
+            foreach (var baseMethod in allBaseMethods)
             {
-                if(baseMethod.ToString() == "UnityEngine.Coroutine StartCoroutine(System.Collections.IEnumerator)")
+                if (baseMethod.ToString() == "UnityEngine.Coroutine StartCoroutine(System.Collections.IEnumerator)")
                     startCoroutineMethodInfo = baseMethod;
             }
 
             // Equivalent to: base.StartCoroutine(this.ApplySlink(this.madDashDuration))
-            startCoroutineMethodInfo.Invoke(__instance, new object[] {applySlinkMethodInfo.Invoke(__instance, new object[] {madDashDurationFieldInfo.GetValue(__instance)})});
+            startCoroutineMethodInfo.Invoke(__instance, new object[] { applySlinkMethodInfo.Invoke(__instance, new object[] { madDashDurationFieldInfo.GetValue(__instance) }) });
         }
 
         static void Postfix(Stopwatch __state)
@@ -267,7 +267,7 @@ public class Plugin : BaseUnityPlugin
                     continue;
                 }
 
-                if(nextSafeInstructions > 0)
+                if (nextSafeInstructions > 0)
                     nextSafeInstructions--;
 
                 yield return instruction;
@@ -279,7 +279,7 @@ public class Plugin : BaseUnityPlugin
     {
         DialogueSystemController DialogueInstance = DialogueManager.instance;
 
-        foreach(Item curr_item in DialogueInstance.databaseManager.masterDatabase.items)
+        foreach (Item curr_item in DialogueInstance.databaseManager.masterDatabase.items)
         {
             string text = curr_item.LookupValue("IconSlot");
             if (!string.IsNullOrEmpty(text))
