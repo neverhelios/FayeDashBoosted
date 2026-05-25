@@ -17,7 +17,7 @@ First you need [BepInEx V 5.4 64 bit](https://docs.bepinex.dev/articles/user_gui
 6. Open the `BepInEx` Folder 
 7. Open the `plugins` Folder
 8. (Optional) Create a `FayeDashBoosted` folder
-9. Paste the [FayeDashBoosted.dll](https://github.com/never-helios/FayeDashBoosted/releases/latest/download/FayeDashBoosted.dll) to the current folder
+9. Paste the [FayeDashBoosted.dll](https://github.com/neverhelios/FayeDashBoosted/releases/latest/download/FayeDashBoosted.dll) to the current folder
 
 And that's it !
 
